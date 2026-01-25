@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useContext, useEffect, useCallback } from "react";
 import {
   StyleSheet,
   Text,
@@ -12,109 +12,172 @@ import {
   SafeAreaView,
   StatusBar,
   Platform,
+  ActivityIndicator,
+  Alert,
+  RefreshControl,
 } from "react-native";
-import { Ionicons, MaterialIcons, FontAwesome5 } from "@expo/vector-icons";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { AuthContext } from "../context/AuthContext";
+import { client } from "../api/client";
 
 const { width } = Dimensions.get("window");
 
-// --- MOCK DATA TO MATCH YOUR SCREENSHOT ---
 const CATEGORIES = ["All", "Music", "Sports", "Theater", "Comedy"];
 
-const FEATURED_EVENTS = [
-  {
-    id: "1",
-    title: "Summer Music Festival",
-    date: "Jul 15, 2024 • 7:00 PM",
-    location: "Central Arena",
-    price: "From $45",
-    image:
-      "https://images.unsplash.com/photo-1533174072545-e8d4aa97edf9?q=80&w=1000&auto=format&fit=crop",
-    tag: "HOT",
-    status: "Available",
-    statusColor: "#10B981", // Green
-  },
-  {
-    id: "2",
-    title: "Championship Final",
-    date: "Jul 20, 2024 • 6:00 PM",
-    location: "Sports Complex",
-    price: "From $90",
-    image:
-      "https://images.unsplash.com/photo-1504450758481-7338eba7524a?q=80&w=1000&auto=format&fit=crop",
-    tag: "SELLING FAST",
-    status: "Few Left",
-    statusColor: "#F59E0B", // Orange
-  },
-];
+export default function HomeScreen({ navigation }) {
+  const { logout } = useContext(AuthContext);
 
-const UPCOMING_EVENTS = [
-  {
-    id: "3",
-    title: "Comedy Night Live",
-    date: "Aug 5, 2024 • 9:00 PM",
-    location: "Laugh Factory",
-    price: "$30",
-    image:
-      "https://images.unsplash.com/photo-1585647347384-2593bc35786b?q=80&w=1000&auto=format&fit=crop",
-  },
-  {
-    id: "4",
-    title: "Broadway Musical",
-    date: "Aug 12, 2024 • 7:30 PM",
-    location: "Grand Theater",
-    price: "$55",
-    image:
-      "https://images.unsplash.com/photo-1503095392269-236fa5900699?q=80&w=1000&auto=format&fit=crop",
-  },
-  {
-    id: "5",
-    title: "Rock Legends Tour",
-    date: "Aug 18, 2024 • 8:00 PM",
-    location: "Stadium Arena",
-    price: "$75",
-    image:
-      "https://images.unsplash.com/photo-1459749411177-8c29142af60e?q=80&w=1000&auto=format&fit=crop",
-  },
-  {
-    id: "6",
-    title: "Jazz & Blues Evening",
-    date: "Aug 25, 2024 • 9:30 PM",
-    location: "Blue Note Club",
-    price: "$40",
-    image:
-      "https://images.unsplash.com/photo-1514525253440-b393452e8d26?q=80&w=1000&auto=format&fit=crop",
-  },
-];
-
-const RECOMMENDED = [
-  {
-    id: "7",
-    title: "EDM Night",
-    date: "Sep 1",
-    price: "$50",
-    image:
-      "https://images.unsplash.com/photo-1571266028243-371602c3327a?q=80&w=1000&auto=format&fit=crop",
-  },
-  {
-    id: "8",
-    title: "Opera Gala",
-    date: "Sep 8",
-    price: "$85",
-    image:
-      "https://images.unsplash.com/photo-1550950346-6309859f77f9?q=80&w=1000&auto=format&fit=crop",
-  },
-];
-
-export default function HomeScreen() {
+  // State
   const [activeCategory, setActiveCategory] = useState("All");
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
-  // Renders the horizontal "Featured" cards
+  // ---------------------------------------------------------
+  // 1. DATA TRANSFORMATION (Schema -> UI)
+  // ---------------------------------------------------------
+  const transformEventData = (backendData) => {
+    return backendData.map((item) => {
+      // 1. Handle ID (MongoDB sometimes returns _id as string or object)
+      const id = item._id?.$oid || item._id || Math.random().toString();
+
+      // 2. Handle Date
+      // Expecting standard ISO string or MongoDB $date object
+      const rawDate = item.startDateTime?.$date || item.startDateTime;
+      const dateObj = new Date(rawDate);
+      const formattedDate = isNaN(dateObj)
+        ? "TBA"
+        : dateObj.toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+          });
+
+      // 3. Handle Image (Base64 vs URL)
+      let imageUri = "https://via.placeholder.com/300"; // Fallback
+      if (item.image) {
+        if (typeof item.image === "string" && item.image.startsWith("http")) {
+          imageUri = item.image;
+        } else if (item.image?.$binary?.base64) {
+          // Handle Mongo Extended JSON binary
+          imageUri = `data:image/jpeg;base64,${item.image.$binary.base64}`;
+        } else if (typeof item.image === "string") {
+          // Assume raw base64 string
+          imageUri = `data:image/jpeg;base64,${item.image}`;
+        }
+      }
+
+      // 4. Handle Price (Schema doesn't have price, generating mockup or checking field)
+      const price = item.price ? `$${item.price}` : "From $45";
+
+      return {
+        id: id,
+        title: item.name || "Untitled Event",
+        date: formattedDate,
+        location: item.venue
+          ? `${item.venue.name}, ${item.venue.city}`
+          : "Unknown Location",
+        price: price,
+        image: imageUri,
+        tag: item.status === "ACTIVE" ? "SELLING FAST" : "SOLD OUT",
+        status: item.status === "ACTIVE" ? "Available" : "Full",
+        statusColor: item.status === "ACTIVE" ? "#10B981" : "#EF4444",
+        type: item.type || "Other", // For filtering
+        description: item.description,
+        likes: item.likes || 0,
+      };
+    });
+  };
+
+  // ---------------------------------------------------------
+  // 2. API CALLS
+  // ---------------------------------------------------------
+  const fetchEvents = useCallback(async () => {
+    try {
+      const response = await client.get("/events");
+      const rawData = response.data;
+      const uiData = transformEventData(rawData);
+      // Sort by likes (descending) and take top 5
+      const topEvents = uiData.sort((a, b) => b.likes - a.likes).slice(0, 5);
+      setEvents(topEvents);
+    } catch (error) {
+      Alert.alert(
+        "Error",
+        "Could not load events. Check your connection and backend server.",
+      );
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchEvents();
+  }, [fetchEvents]);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchEvents();
+  };
+
+  // ---------------------------------------------------------
+  // 3. FILTERING LOGIC
+  // ---------------------------------------------------------
+  const getFilteredEvents = () => {
+    let filtered = events;
+
+    // Filter by Category
+    if (activeCategory !== "All") {
+      filtered = filtered.filter(
+        (e) => e.type?.toLowerCase() === activeCategory.toLowerCase(),
+      );
+    }
+
+    // Filter by Search
+    if (searchQuery) {
+      filtered = filtered.filter(
+        (e) =>
+          e.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          e.location.toLowerCase().includes(searchQuery.toLowerCase()),
+      );
+    }
+
+    return filtered;
+  };
+
+  const displayEvents = getFilteredEvents();
+
+  // Logic to split 'Featured' vs 'Upcoming'
+  // (In a real app, you might have a dedicated boolean in DB for 'isFeatured')
+  const featuredList = displayEvents.slice(0, 3);
+  const upcomingList = displayEvents.slice(3);
+
+  // ---------------------------------------------------------
+  // 4. RENDER ITEMS
+  // ---------------------------------------------------------
+
   const renderFeaturedItem = ({ item }) => (
-    <TouchableOpacity activeOpacity={0.9} style={styles.featuredCard}>
+    <TouchableOpacity
+      activeOpacity={0.9}
+      style={styles.featuredCard}
+      onPress={() => navigation.navigate("EventDetails", { event: item })}
+    >
       <View style={styles.featuredImageContainer}>
-        <Image source={{ uri: item.image }} style={styles.featuredImage} />
+        <Image
+          source={{ uri: item.image }}
+          style={styles.featuredImage}
+          resizeMode="cover"
+        />
         <View style={styles.hotTag}>
           <Text style={styles.hotTagText}>{item.tag}</Text>
+        </View>
+
+        {/* Likes Badge */}
+        <View style={styles.likesBadge}>
+          <Ionicons name="heart" size={14} color="#FF0055" />
+          <Text style={styles.likesText}>{item.likes}</Text>
         </View>
       </View>
       <View style={styles.featuredContent}>
@@ -122,7 +185,9 @@ export default function HomeScreen() {
         <Text style={styles.cardDate}>{item.date}</Text>
         <View style={styles.locationRow}>
           <Ionicons name="location-outline" size={14} color="#666" />
-          <Text style={styles.cardLocation}>{item.location}</Text>
+          <Text style={styles.cardLocation} numberOfLines={1}>
+            {item.location}
+          </Text>
         </View>
         <View style={styles.priceRow}>
           <Text style={styles.priceText}>{item.price}</Text>
@@ -144,12 +209,13 @@ export default function HomeScreen() {
     </TouchableOpacity>
   );
 
-  // Renders the "Recommended" square cards
   const renderRecommendedItem = ({ item }) => (
     <TouchableOpacity activeOpacity={0.9} style={styles.recCard}>
       <Image source={{ uri: item.image }} style={styles.recImage} />
       <View style={styles.recContent}>
-        <Text style={styles.recTitle}>{item.title}</Text>
+        <Text style={styles.recTitle} numberOfLines={1}>
+          {item.title}
+        </Text>
         <Text style={styles.recDate}>
           <Ionicons name="calendar-outline" size={12} /> {item.date}
         </Text>
@@ -161,11 +227,22 @@ export default function HomeScreen() {
     </TouchableOpacity>
   );
 
+  // ---------------------------------------------------------
+  // MAIN RETURN
+  // ---------------------------------------------------------
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.center]}>
+        <ActivityIndicator size="large" color="#0F172A" />
+      </View>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFF" />
 
-      {/* 1. Header */}
+      {/* Header */}
       <View style={styles.header}>
         <View style={styles.brandRow}>
           <View style={styles.logoBox}>
@@ -173,19 +250,27 @@ export default function HomeScreen() {
           </View>
           <Text style={styles.brandName}>PM</Text>
         </View>
-        <TouchableOpacity style={styles.avatarContainer}>
-          <Image
-            source={{ uri: "https://i.pravatar.cc/150?img=12" }}
-            style={styles.avatar}
-          />
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          <TouchableOpacity onPress={logout} style={styles.logoutButton}>
+            <MaterialIcons name="logout" size={24} color="#0F172A" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.avatarContainer}>
+            <Image
+              source={{ uri: "https://i.pravatar.cc/150?img=12" }}
+              style={styles.avatar}
+            />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       >
-        {/* 2. Search Bar */}
+        {/* Search Bar */}
         <View style={styles.searchContainer}>
           <Ionicons
             name="search"
@@ -194,13 +279,15 @@ export default function HomeScreen() {
             style={styles.searchIcon}
           />
           <TextInput
-            placeholder="Search events, artists, venues..."
+            placeholder="Search events..."
             placeholderTextColor="#999"
             style={styles.searchInput}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
           />
         </View>
 
-        {/* 3. Categories */}
+        {/* Categories */}
         <View style={styles.categoryContainer}>
           <ScrollView
             horizontal
@@ -229,103 +316,109 @@ export default function HomeScreen() {
           </ScrollView>
         </View>
 
-        {/* 4. Featured Events */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Featured Events</Text>
-          <TouchableOpacity>
-            <Text style={styles.seeAllText}>See All</Text>
-          </TouchableOpacity>
-        </View>
-
-        <FlatList
-          data={FEATURED_EVENTS}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          keyExtractor={(item) => item.id}
-          renderItem={renderFeaturedItem}
-          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20 }}
-          snapToInterval={width * 0.75 + 20}
-          decelerationRate="fast"
-        />
-
-        {/* 5. Upcoming Events (Vertical List) */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Upcoming Events</Text>
-          <TouchableOpacity>
-            <Text style={styles.seeAllText}>View All</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.verticalList}>
-          {UPCOMING_EVENTS.map((item) => (
-            <TouchableOpacity
-              key={item.id}
-              style={styles.upcomingCard}
-              activeOpacity={0.8}
-            >
-              <Image
-                source={{ uri: item.image }}
-                style={styles.upcomingImage}
-              />
-              <View style={styles.upcomingContent}>
-                <Text style={styles.upcomingTitle} numberOfLines={1}>
-                  {item.title}
-                </Text>
-                <Text style={styles.upcomingDate}>{item.date}</Text>
-                <Text style={styles.upcomingLocation}>{item.location}</Text>
-
-                <View style={styles.upcomingFooter}>
-                  <Text style={styles.upcomingPrice}>{item.price}</Text>
-                  <TouchableOpacity style={styles.getTicketBtn}>
-                    <Text style={styles.getTicketText}>Get Tickets</Text>
+        {displayEvents.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No events found.</Text>
+          </View>
+        ) : (
+          <>
+            {/* Featured Events */}
+            {featuredList.length > 0 && (
+              <>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>Featured Events</Text>
+                  <TouchableOpacity>
+                    <Text style={styles.seeAllText}>See All</Text>
                   </TouchableOpacity>
                 </View>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
 
-        {/* 6. Recommended Section */}
+                <FlatList
+                  data={featuredList}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  keyExtractor={(item) => item.id.toString()}
+                  renderItem={renderFeaturedItem}
+                  contentContainerStyle={{
+                    paddingHorizontal: 20,
+                    paddingBottom: 20,
+                  }}
+                  snapToInterval={width * 0.75 + 20}
+                  decelerationRate="fast"
+                />
+              </>
+            )}
+
+            {/* Upcoming Events (Vertical List) */}
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Upcoming Events</Text>
+              <TouchableOpacity>
+                <Text style={styles.seeAllText}>View All</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.verticalList}>
+              {upcomingList.map((item) => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={styles.upcomingCard}
+                  activeOpacity={0.8}
+                  onPress={() =>
+                    navigation.navigate("EventDetails", { event: item })
+                  }
+                >
+                  <Image
+                    source={{ uri: item.image }}
+                    style={styles.upcomingImage}
+                  />
+                  <View style={styles.upcomingContent}>
+                    <Text style={styles.upcomingTitle} numberOfLines={1}>
+                      {item.title}
+                    </Text>
+                    <View style={styles.upcomingMetaRow}>
+                      <Text style={styles.upcomingDate}>{item.date}</Text>
+                      <View style={styles.upcomingLikes}>
+                        <Ionicons name="heart" size={12} color="#FF0055" />
+                        <Text style={styles.upcomingLikesText}>
+                          {item.likes}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={styles.upcomingLocation} numberOfLines={1}>
+                      {item.location}
+                    </Text>
+
+                    <View style={styles.upcomingFooter}>
+                      <Text style={styles.upcomingPrice}>{item.price}</Text>
+                      <TouchableOpacity style={styles.getTicketBtn}>
+                        <Text style={styles.getTicketText}>Get Tickets</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
+              {upcomingList.length === 0 && (
+                <Text style={{ marginLeft: 20, color: "#999" }}>
+                  No additional upcoming events.
+                </Text>
+              )}
+            </View>
+          </>
+        )}
+
+        {/* Recommended Section (Reusing events for demo, or fetch separate endpoint) */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Recommended For You</Text>
         </View>
 
         <FlatList
-          data={RECOMMENDED}
+          data={events.slice(0, 4).reverse()} // Just showing some data reversed
           horizontal
           showsHorizontalScrollIndicator={false}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => "rec-" + item.id}
           renderItem={renderRecommendedItem}
-          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 90 }} // Extra padding for bottom bar
+          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 90 }}
         />
       </ScrollView>
-
-      {/* 7. Fake Bottom Navigation (Visual Only) */}
-      <View style={styles.bottomBar}>
-        <TouchableOpacity style={styles.bottomItem}>
-          <Ionicons name="home" size={24} color="#0F172A" />
-          <Text
-            style={[
-              styles.bottomText,
-              { color: "#0F172A", fontWeight: "bold" },
-            ]}
-          >
-            Home
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.bottomItem}>
-          <Ionicons name="compass-outline" size={24} color="#94A3B8" />
-          <Text style={styles.bottomText}>Explore</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.bottomItem}>
-          <Ionicons name="ticket-outline" size={24} color="#94A3B8" />
-          <Text style={styles.bottomText}>My Tickets</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.bottomItem}>
-          <Ionicons name="heart-outline" size={24} color="#94A3B8" />
-          <Text style={styles.bottomText}>Favorites</Text>
-        </TouchableOpacity>
-      </View>
     </SafeAreaView>
   );
 }
@@ -336,8 +429,20 @@ const styles = StyleSheet.create({
     backgroundColor: "#FAFAFA",
     paddingTop: Platform.OS === "android" ? 30 : 0,
   },
+  center: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
   scrollContent: {
     paddingBottom: 20,
+  },
+  emptyContainer: {
+    alignItems: "center",
+    marginTop: 50,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: "#999",
   },
   // Header
   header: {
@@ -365,6 +470,14 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "800",
     color: "#0F172A",
+  },
+  headerRight: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  logoutButton: {
+    padding: 8,
+    marginRight: 8,
   },
   avatarContainer: {
     backgroundColor: "#F1F5F9",
@@ -434,7 +547,7 @@ const styles = StyleSheet.create({
     color: "#0F172A",
   },
   seeAllText: {
-    color: "#EF4444", // Reddish tint like screenshot
+    color: "#EF4444",
     fontWeight: "600",
     fontSize: 14,
   },
@@ -449,7 +562,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 10,
     elevation: 5,
-    marginBottom: 10, // space for shadow
+    marginBottom: 10,
   },
   featuredImageContainer: {
     position: "relative",
@@ -474,6 +587,28 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "bold",
   },
+  likesBadge: {
+    position: "absolute",
+    bottom: 10,
+    left: 10,
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  likesText: {
+    color: "#0F172A",
+    fontSize: 12,
+    fontWeight: "700",
+    marginLeft: 4,
+  },
   featuredContent: {
     padding: 15,
   },
@@ -497,6 +632,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#64748B",
     marginLeft: 4,
+    flex: 1,
   },
   priceRow: {
     flexDirection: "row",
@@ -506,7 +642,7 @@ const styles = StyleSheet.create({
   priceText: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#2563EB", // Blue
+    color: "#2563EB",
   },
   statusBadge: {
     flexDirection: "row",
@@ -559,9 +695,28 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#0F172A",
   },
+  upcomingMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
   upcomingDate: {
     fontSize: 12,
     color: "#64748B",
+  },
+  upcomingLikes: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFF0F3",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  upcomingLikesText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#FF0055",
+    marginLeft: 3,
   },
   upcomingLocation: {
     fontSize: 12,
@@ -626,27 +781,5 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-  },
-  // Bottom Bar (Fake)
-  bottomBar: {
-    position: "absolute",
-    bottom: 0,
-    width: "100%",
-    height: 80,
-    backgroundColor: "#FFF",
-    flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "center",
-    paddingBottom: 20, // For iPhone home indicator
-    borderTopWidth: 1,
-    borderTopColor: "#F1F5F9",
-  },
-  bottomItem: {
-    alignItems: "center",
-  },
-  bottomText: {
-    fontSize: 10,
-    marginTop: 4,
-    color: "#94A3B8",
   },
 });

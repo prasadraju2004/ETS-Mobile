@@ -71,20 +71,41 @@ export default function AuthScreen() {
       const { access_token, user } = response.data;
 
       if (access_token) {
-        login(access_token, user); // Call Context Login
+        await login(access_token, user); // Call Context Login
+        Alert.alert(
+          "Success!",
+          `Welcome ${user?.name || user?.email || "back"}!`,
+        );
       } else {
         Alert.alert("Error", "No access token received.");
       }
     } catch (error) {
       // 6. Handle Errors
-      console.log(error);
-      const message =
-        error.response?.data?.message ||
-        "Something went wrong. Check connection.";
-      Alert.alert(
-        "Authentication Failed",
-        Array.isArray(message) ? message[0] : message,
-      );
+
+      let errorTitle = "Authentication Failed";
+      let errorMessage = "Something went wrong.";
+
+      if (error.code === "ECONNABORTED") {
+        errorTitle = "Connection Timeout";
+        errorMessage =
+          "The request took too long. Check your internet connection.";
+      } else if (error.message === "Network Error") {
+        errorTitle = "Network Error";
+        errorMessage =
+          "Cannot connect to server.\n\n• Make sure backend is running on port 5000\n• Check if you're using Android Emulator (10.0.2.2) or physical device (use your LAN IP)";
+      } else if (error.response) {
+        // Server responded with error
+        const message = error.response.data?.message;
+        errorMessage = Array.isArray(message)
+          ? message.join("\n")
+          : message || error.response.data?.error || errorMessage;
+      } else if (error.request) {
+        errorTitle = "No Response";
+        errorMessage =
+          "Backend server is not responding.\n\nPlease ensure:\n• Backend is running: npm run start:dev\n• Backend is on port 5000";
+      }
+
+      Alert.alert(errorTitle, errorMessage);
     } finally {
       setIsSubmitting(false);
     }
