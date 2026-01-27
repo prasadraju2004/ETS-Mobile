@@ -9,7 +9,10 @@ import { AuthContext } from "../context/AuthContext";
 import AuthScreen from "../screens/AuthScreen";
 import HomeScreen from "../screens/HomeScreen";
 import ExploreScreen from "../screens/ExploreScreen";
+import TicketsScreen from "../screens/TicketsScreen";
+import FavoritesScreen from "../screens/FavoritesScreen";
 import EventDetailsScreen from "../screens/EventDetailsScreen";
+import ProfileScreen from "../screens/ProfileScreen";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -65,12 +68,12 @@ function MainTabs() {
       />
       <Tab.Screen
         name="Tickets"
-        component={HomeScreen}
+        component={TicketsScreen}
         options={{ tabBarLabel: "My Tickets" }}
       />
       <Tab.Screen
         name="Favorites"
-        component={HomeScreen}
+        component={FavoritesScreen}
         options={{ tabBarLabel: "Favorites" }}
       />
     </Tab.Navigator>
@@ -118,6 +121,14 @@ export default function AppNavigator() {
             <Stack.Screen
               name="EventDetails"
               component={EventDetailsScreen}
+              options={{
+                animation: "slide_from_right",
+                animationDuration: 300,
+              }}
+            />
+            <Stack.Screen
+              name="Profile"
+              component={ProfileScreen}
               options={{
                 animation: "slide_from_right",
                 animationDuration: 300,

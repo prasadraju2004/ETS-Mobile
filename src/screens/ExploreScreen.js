@@ -9,13 +9,13 @@ import {
   TouchableOpacity,
   FlatList,
   Dimensions,
-  SafeAreaView,
   StatusBar,
   Platform,
   ActivityIndicator,
   Alert,
   RefreshControl,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { client } from "../api/client";
 
@@ -206,18 +206,22 @@ export default function ExploreScreen({ navigation }) {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFF" />
 
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.brandRow}>
-          <View style={styles.logoBox}>
-            <MaterialIcons name="confirmation-number" size={20} color="#FFF" />
-          </View>
-          <Text style={styles.brandName}>Explore</Text>
+          <Image
+            source={require("../../assets/EP Logo nobg.png")}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
         </View>
-        <TouchableOpacity style={styles.avatarContainer}>
+        <TouchableOpacity
+          style={styles.avatarContainer}
+          onPress={() => navigation.navigate("Profile")}
+        >
           <Image
             source={{ uri: "https://i.pravatar.cc/150?img=12" }}
             style={styles.avatar}
@@ -314,7 +318,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#FAFAFA",
-    paddingTop: Platform.OS === "android" ? 30 : 0,
   },
   center: {
     justifyContent: "center",
@@ -325,37 +328,33 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    backgroundColor: "#FFF",
+    paddingLeft: 0,
+    paddingRight: 20,
+    paddingTop: 10,
+    paddingBottom: 15,
+    backgroundColor: "#FAFAFA",
   },
   brandRow: {
     flexDirection: "row",
     alignItems: "center",
   },
-  logoBox: {
-    width: 32,
-    height: 32,
-    backgroundColor: "#1E293B",
-    borderRadius: 8,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 10,
-  },
-  brandName: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: "#0F172A",
+  logoImage: {
+    height: 48,
+    width: 170,
   },
   avatarContainer: {
-    backgroundColor: "#F1F5F9",
-    padding: 2,
-    borderRadius: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
   },
   avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 2.5,
+    borderColor: "#FFF",
   },
   // Search
   searchContainer: {

@@ -7,6 +7,7 @@ import {
   TextInput,
   TouchableOpacity,
   ImageBackground,
+  Image,
   Dimensions,
   StatusBar,
   KeyboardAvoidingView,
@@ -34,7 +35,9 @@ export default function AuthScreen() {
   // Form State
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   const toggleMode = () => {
     setIsLogin(!isLogin);
@@ -51,6 +54,21 @@ export default function AuthScreen() {
       Alert.alert("Missing Fields", "Please enter your full name.");
       return;
     }
+    if (!isLogin && !phone) {
+      Alert.alert("Missing Fields", "Please enter your phone number.");
+      return;
+    }
+    if (!isLogin && !confirmPassword) {
+      Alert.alert("Missing Fields", "Please confirm your password.");
+      return;
+    }
+    if (!isLogin && password !== confirmPassword) {
+      Alert.alert(
+        "Password Mismatch",
+        "Passwords do not match. Please try again.",
+      );
+      return;
+    }
 
     setIsSubmitting(true);
     Keyboard.dismiss();
@@ -60,8 +78,15 @@ export default function AuthScreen() {
       const endpoint = isLogin ? "/auth/login" : "/auth/signup";
 
       // 3. Construct Payload
-      // Note: Adjust 'name' key based on what your User DTO expects (e.g., 'username', 'fullName', 'name')
-      const payload = isLogin ? { email, password } : { email, password, name };
+      const payload = isLogin
+        ? { email, password }
+        : {
+            name,
+            email,
+            phone,
+            password,
+            role: "CUSTOMER", // Mobile app is for customers only
+          };
 
       // 4. Make API Call
       const response = await client.post(endpoint, payload);
@@ -71,11 +96,17 @@ export default function AuthScreen() {
       const { access_token, user } = response.data;
 
       if (access_token) {
+        // Check if user has Customer role
+        if (user?.role !== "CUSTOMER") {
+          Alert.alert(
+            "Access Denied",
+            "This application is only available for customers. Please contact support if you believe this is an error.",
+            [{ text: "OK" }],
+          );
+          return;
+        }
+
         await login(access_token, user); // Call Context Login
-        Alert.alert(
-          "Success!",
-          `Welcome ${user?.name || user?.email || "back"}!`,
-        );
       } else {
         Alert.alert("Error", "No access token received.");
       }
@@ -134,7 +165,11 @@ export default function AuthScreen() {
           >
             <ScrollView contentContainerStyle={styles.scrollContent}>
               <View style={styles.headerContainer}>
-                <Text style={styles.brandTitle}>PM</Text>
+                <Image
+                  source={require("../../assets/EP Logo nobg.png")}
+                  style={styles.logoImage}
+                  resizeMode="contain"
+                />
                 <Text style={styles.subTitle}>
                   {isLogin ? "Welcome Back, Legend." : "Join the Experience."}
                 </Text>
@@ -157,6 +192,26 @@ export default function AuthScreen() {
                       value={name}
                       onChangeText={setName}
                       autoCapitalize="words"
+                    />
+                  </View>
+                )}
+
+                {/* PHONE INPUT (Signup Only) */}
+                {!isLogin && (
+                  <View style={styles.inputContainer}>
+                    <MaterialCommunityIcons
+                      name="phone-outline"
+                      size={24}
+                      color="#A0A0A0"
+                      style={styles.icon}
+                    />
+                    <TextInput
+                      placeholder="Phone Number"
+                      placeholderTextColor="#666"
+                      keyboardType="phone-pad"
+                      style={styles.input}
+                      value={phone}
+                      onChangeText={setPhone}
                     />
                   </View>
                 )}
@@ -198,6 +253,26 @@ export default function AuthScreen() {
                   />
                 </View>
 
+                {/* CONFIRM PASSWORD INPUT (Signup Only) */}
+                {!isLogin && (
+                  <View style={styles.inputContainer}>
+                    <MaterialCommunityIcons
+                      name="lock-check-outline"
+                      size={24}
+                      color="#A0A0A0"
+                      style={styles.icon}
+                    />
+                    <TextInput
+                      placeholder="Confirm Password"
+                      placeholderTextColor="#666"
+                      secureTextEntry
+                      style={styles.input}
+                      value={confirmPassword}
+                      onChangeText={setConfirmPassword}
+                    />
+                  </View>
+                )}
+
                 {isLogin && (
                   <TouchableOpacity style={styles.forgotPass}>
                     <Text style={styles.forgotPassText}>Forgot Password?</Text>
@@ -221,7 +296,7 @@ export default function AuthScreen() {
                     ) : (
                       <>
                         <Text style={styles.buttonText}>
-                          {isLogin ? "LOG IN" : "GET TICKETS"}
+                          {isLogin ? "LOG IN" : "SIGN-UP"}
                         </Text>
                         <MaterialCommunityIcons
                           name="arrow-right"
@@ -273,15 +348,11 @@ const styles = StyleSheet.create({
   gradientOverlay: { ...StyleSheet.absoluteFillObject },
   keyboardView: { flex: 1, justifyContent: "center" },
   scrollContent: { flexGrow: 1, justifyContent: "center", padding: 20 },
-  headerContainer: { marginBottom: 30, marginTop: 50 },
-  brandTitle: {
-    fontSize: 42,
-    fontWeight: "800",
-    color: "#FFF",
-    letterSpacing: 2,
-    textShadowColor: "rgba(255, 0, 153, 0.5)",
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 20,
+  headerContainer: { marginBottom: 30, marginTop: 50, alignItems: "center" },
+  logoImage: {
+    height: 80,
+    width: 280,
+    marginBottom: 10,
   },
   subTitle: {
     fontSize: 18,
