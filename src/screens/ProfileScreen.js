@@ -43,15 +43,15 @@ export default function ProfileScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle="dark-content" />
 
-      {/* Header with gradient */}
-      <LinearGradient colors={["#1E293B", "#0F172A"]} style={styles.header}>
+      {/* Header - blends with background */}
+      <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="arrow-back" size={24} color="#FFF" />
+          <Ionicons name="arrow-back" size={24} color="#0F172A" />
         </TouchableOpacity>
 
         <Text style={styles.headerTitle}>Profile</Text>
@@ -63,10 +63,10 @@ export default function ProfileScreen({ navigation }) {
           <Ionicons
             name={isEditing ? "close" : "create-outline"}
             size={24}
-            color="#FFF"
+            color="#0F172A"
           />
         </TouchableOpacity>
-      </LinearGradient>
+      </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Profile Avatar Section */}
@@ -147,17 +147,17 @@ export default function ProfileScreen({ navigation }) {
           <Text style={styles.sectionTitle}>Account Overview</Text>
           <View style={styles.statsContainer}>
             <View style={styles.statCard}>
-              <Ionicons name="ticket" size={24} color="#FF0055" />
+              <Ionicons name="ticket" size={24} color="#003580" />
               <Text style={styles.statNumber}>0</Text>
               <Text style={styles.statLabel}>Tickets</Text>
             </View>
             <View style={styles.statCard}>
-              <Ionicons name="heart" size={24} color="#FF0055" />
+              <Ionicons name="heart" size={24} color="#003580" />
               <Text style={styles.statNumber}>0</Text>
               <Text style={styles.statLabel}>Favorites</Text>
             </View>
             <View style={styles.statCard}>
-              <Ionicons name="calendar" size={24} color="#FF0055" />
+              <Ionicons name="calendar" size={24} color="#003580" />
               <Text style={styles.statNumber}>0</Text>
               <Text style={styles.statLabel}>Events</Text>
             </View>
@@ -169,7 +169,7 @@ export default function ProfileScreen({ navigation }) {
           <View style={styles.section}>
             <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
               <LinearGradient
-                colors={["#10B981", "#059669"]}
+                colors={["#003580", "#0052CC"]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.saveButtonGradient}
@@ -184,7 +184,7 @@ export default function ProfileScreen({ navigation }) {
         {/* Logout Button */}
         <View style={styles.section}>
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <MaterialIcons name="logout" size={20} color="#EF4444" />
+            <MaterialIcons name="logout" size={20} color="#003580" />
             <Text style={styles.logoutText}>Logout</Text>
           </TouchableOpacity>
         </View>
@@ -206,27 +206,38 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 20,
     paddingVertical: 15,
+    backgroundColor: "#FAFAFA",
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    backgroundColor: "#FFF",
     justifyContent: "center",
     alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: "800",
-    color: "#FFF",
+    color: "#0F172A",
   },
   editButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    backgroundColor: "#FFF",
     justifyContent: "center",
     alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
   avatarSection: {
     alignItems: "center",
@@ -257,7 +268,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: "#FF0055",
+    backgroundColor: "#003580",
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 3,
@@ -336,7 +347,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   saveButton: {
-    shadowColor: "#10B981",
+    shadowColor: "#003580",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -363,10 +374,10 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 18,
     borderWidth: 2,
-    borderColor: "#EF4444",
+    borderColor: "#003580",
   },
   logoutText: {
-    color: "#EF4444",
+    color: "#003580",
     fontSize: 16,
     fontWeight: "700",
     marginLeft: 8,

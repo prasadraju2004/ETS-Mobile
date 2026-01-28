@@ -16,52 +16,84 @@ import { LinearGradient } from "expo-linear-gradient";
 
 const { width, height } = Dimensions.get("window");
 
+// Constants for layout
+const IMG_HEIGHT = height * 0.45;
+
 export default function EventDetailsScreen({ route, navigation }) {
-  const { event } = route.params;
+  // Mock data if route params aren't passed (for testing UI)
+  const event = route?.params?.event || {
+    image:
+      "https://images.unsplash.com/photo-1459749411177-2a25413f3120?q=80&w=2070&auto=format&fit=crop",
+    title: "City Marathon 2026",
+    likes: 9813,
+    date: "Jan 12, 11:00 AM",
+    location: "City Roads, Delhi",
+    description:
+      "Experience an unforgettable event filled with amazing performances, great atmosphere, and a chance to create lasting memories.",
+    type: "Sports",
+    tag: "SELLING FAST",
+    price: "From $45",
+    status: "Open",
+    statusColor: "#10B981",
+  };
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
-      <StatusBar barStyle="light-content" />
+    <View style={styles.container}>
+      <StatusBar
+        barStyle="light-content"
+        translucent
+        backgroundColor="transparent"
+      />
 
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Hero Image */}
-        <View style={styles.heroContainer}>
-          <Image source={{ uri: event.image }} style={styles.heroImage} />
+      {/* --- FIXED BACKGROUND IMAGE --- */}
+      {/* This stays stable while content scrolls over it */}
+      <View style={styles.fixedImageContainer}>
+        <Image source={{ uri: event.image }} style={styles.heroImage} />
+        <LinearGradient
+          colors={["transparent", "rgba(0,0,0,0.7)"]}
+          style={styles.gradient}
+        />
 
-          {/* Gradient Overlay */}
-          <LinearGradient
-            colors={["transparent", "rgba(0,0,0,0.8)"]}
-            style={styles.gradient}
-          />
-
-          {/* Back Button */}
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Ionicons name="arrow-back" size={24} color="#FFF" />
-          </TouchableOpacity>
-
-          {/* Like Button */}
-          <TouchableOpacity style={styles.likeButton}>
-            <Ionicons name="heart-outline" size={28} color="#FFF" />
-          </TouchableOpacity>
-
-          {/* Floating Status Badge */}
-          <View style={styles.floatingBadge}>
-            <Text style={styles.floatingBadgeText}>{event.tag}</Text>
-          </View>
+        {/* FLOATING TAG - Inside image container so it scrolls with image */}
+        <View style={styles.floatingBadge}>
+          <Text style={styles.floatingBadgeText}>{event.tag}</Text>
         </View>
+      </View>
 
-        {/* Content */}
-        <View style={styles.contentContainer}>
+      {/* --- FIXED HEADER BUTTONS --- */}
+      {/* Z-Index ensures they stay clickable and on top of image */}
+      <SafeAreaView style={styles.headerButtonsContainer} edges={["top"]}>
+        <TouchableOpacity
+          style={styles.circleButton}
+          onPress={() => navigation?.goBack()}
+        >
+          <Ionicons name="arrow-back" size={24} color="#FFF" />
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.circleButton}>
+          <Ionicons name="heart-outline" size={28} color="#FFF" />
+        </TouchableOpacity>
+      </SafeAreaView>
+
+      {/* --- SCROLLABLE CONTENT --- */}
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* Transparent spacer equal to image height minus overlap */}
+        <View style={{ height: IMG_HEIGHT - 40 }} />
+
+        <View style={styles.detailsContainer}>
+          {/* Handle bar for visual effect */}
+          <View style={styles.handleBar} />
+
           {/* Title Section */}
           <View style={styles.titleSection}>
             <Text style={styles.title}>{event.title}</Text>
 
             {/* Likes Count */}
             <View style={styles.likesContainer}>
-              <Ionicons name="heart" size={20} color="#FF0055" />
+              <Ionicons name="heart" size={16} color="#FF0055" />
               <Text style={styles.likesCount}>{event.likes} Likes</Text>
             </View>
           </View>
@@ -71,7 +103,7 @@ export default function EventDetailsScreen({ route, navigation }) {
             {/* Date & Time Card */}
             <View style={styles.infoCard}>
               <View style={styles.iconBox}>
-                <Ionicons name="calendar" size={24} color="#FF0055" />
+                <Ionicons name="calendar" size={24} color="#003580" />
               </View>
               <View style={styles.infoContent}>
                 <Text style={styles.infoLabel}>Date & Time</Text>
@@ -82,7 +114,7 @@ export default function EventDetailsScreen({ route, navigation }) {
             {/* Location Card */}
             <View style={styles.infoCard}>
               <View style={styles.iconBox}>
-                <Ionicons name="location" size={24} color="#FF0055" />
+                <Ionicons name="location" size={24} color="#003580" />
               </View>
               <View style={styles.infoContent}>
                 <Text style={styles.infoLabel}>Location</Text>
@@ -120,7 +152,7 @@ export default function EventDetailsScreen({ route, navigation }) {
                         : "celebration"
                 }
                 size={20}
-                color="#FF0055"
+                color="#003580"
               />
               <Text style={styles.categoryText}>{event.type || "Event"}</Text>
             </View>
@@ -131,7 +163,7 @@ export default function EventDetailsScreen({ route, navigation }) {
             <View
               style={[
                 styles.statusBadge,
-                { backgroundColor: event.statusColor + "20" },
+                { backgroundColor: event.statusColor + "15" },
               ]}
             >
               <View
@@ -146,12 +178,12 @@ export default function EventDetailsScreen({ route, navigation }) {
             </View>
           </View>
 
-          {/* Bottom Spacing */}
+          {/* Padding for Bottom Bar */}
           <View style={{ height: 100 }} />
         </View>
       </ScrollView>
 
-      {/* Bottom Action Bar */}
+      {/* --- BOTTOM ACTION BAR --- */}
       <View style={styles.bottomBar}>
         <View style={styles.priceContainer}>
           <Text style={styles.priceLabel}>Price</Text>
@@ -159,7 +191,8 @@ export default function EventDetailsScreen({ route, navigation }) {
         </View>
         <TouchableOpacity style={styles.bookButton}>
           <LinearGradient
-            colors={["#FF0055", "#FF0099"]}
+            // Thick Blue Gradient
+            colors={["#003580", "#0052CC"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.bookButtonGradient}
@@ -169,73 +202,100 @@ export default function EventDetailsScreen({ route, navigation }) {
           </LinearGradient>
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FAFAFA",
+    backgroundColor: "#F8FAFC", // Light cool grey background
   },
-  heroContainer: {
-    position: "relative",
-    height: height * 0.45,
+  // --- FIXED IMAGE STYLES ---
+  fixedImageContainer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: width,
+    height: IMG_HEIGHT,
+    zIndex: 0,
   },
   heroImage: {
-    width: width,
+    width: "100%",
     height: "100%",
+    resizeMode: "cover",
   },
   gradient: {
     position: "absolute",
     left: 0,
     right: 0,
     bottom: 0,
-    height: "50%",
+    height: "60%",
   },
-  backButton: {
+  // --- HEADER BUTTONS ---
+  headerButtonsContainer: {
     position: "absolute",
-    top: Platform.OS === "android" ? 40 : 50,
-    left: 20,
+    top: 0,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    zIndex: 10,
+    marginTop: Platform.OS === "android" ? 10 : 0,
+    pointerEvents: "box-none", // Allows clicking through empty space
+  },
+  circleButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
     justifyContent: "center",
     alignItems: "center",
-  },
-  likeButton: {
-    position: "absolute",
-    top: Platform.OS === "android" ? 40 : 50,
-    right: 20,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "center",
-    alignItems: "center",
+    backdropFilter: "blur(10px)",
   },
   floatingBadge: {
     position: "absolute",
     bottom: 20,
     right: 20,
-    backgroundColor: "#EF4444",
+    backgroundColor: "#DC2626",
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 6,
   },
   floatingBadgeText: {
     color: "#FFF",
     fontSize: 12,
     fontWeight: "bold",
   },
-  contentContainer: {
-    backgroundColor: "#FAFAFA",
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    marginTop: -30,
+  // --- SCROLL CONTENT ---
+  scrollContent: {
+    flexGrow: 1,
+  },
+  detailsContainer: {
+    backgroundColor: "#F8FAFC",
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
     paddingHorizontal: 20,
-    paddingTop: 25,
+    paddingTop: 12,
+    minHeight: height * 0.7,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -5 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+  },
+  handleBar: {
+    width: 40,
+    height: 4,
+    backgroundColor: "#CBD5E1",
+    borderRadius: 2,
+    alignSelf: "center",
+    marginBottom: 20,
   },
   titleSection: {
     marginBottom: 20,
@@ -250,17 +310,22 @@ const styles = StyleSheet.create({
   likesContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFF0F3",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderRadius: 20,
     alignSelf: "flex-start",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   likesCount: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "700",
-    color: "#FF0055",
-    marginLeft: 6,
+    color: "#0F172A",
+    marginLeft: 5,
   },
   infoCards: {
     marginBottom: 25,
@@ -269,19 +334,21 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     backgroundColor: "#FFF",
     padding: 16,
-    borderRadius: 16,
+    borderRadius: 20,
     marginBottom: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+    shadowColor: "#64748B",
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.05,
-    shadowRadius: 8,
+    shadowRadius: 10,
     elevation: 2,
   },
   iconBox: {
     width: 50,
     height: 50,
-    borderRadius: 12,
-    backgroundColor: "#FFF0F3",
+    borderRadius: 16,
+    backgroundColor: "#F0F5FF", // Light Blue Background
     justifyContent: "center",
     alignItems: "center",
     marginRight: 15,
@@ -294,12 +361,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#64748B",
     marginBottom: 4,
-    fontWeight: "500",
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
   infoValue: {
-    fontSize: 15,
+    fontSize: 16,
     color: "#0F172A",
-    fontWeight: "600",
+    fontWeight: "700",
   },
   section: {
     marginBottom: 25,
@@ -312,7 +381,7 @@ const styles = StyleSheet.create({
   },
   description: {
     fontSize: 15,
-    color: "#64748B",
+    color: "#475569",
     lineHeight: 24,
   },
   categoryBadge: {
@@ -323,13 +392,13 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 12,
     alignSelf: "flex-start",
-    borderWidth: 1,
-    borderColor: "#FF0055",
+    borderWidth: 1.5,
+    borderColor: "#003580", // Thick Blue Border
   },
   categoryText: {
     fontSize: 15,
-    fontWeight: "600",
-    color: "#FF0055",
+    fontWeight: "700",
+    color: "#003580", // Thick Blue Text
     marginLeft: 8,
   },
   statusContainer: {
@@ -353,37 +422,39 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700",
   },
+  // --- BOTTOM BAR ---
   bottomBar: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
     backgroundColor: "#FFF",
-    paddingHorizontal: 20,
-    paddingTop: 15,
-    paddingBottom: Platform.OS === "android" ? 15 : 25,
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: Platform.OS === "android" ? 16 : 30,
     borderTopWidth: 1,
     borderTopColor: "#F1F5F9",
     flexDirection: "row",
     alignItems: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
     elevation: 10,
   },
   priceContainer: {
-    marginRight: 15,
+    marginRight: 20,
   },
   priceLabel: {
     fontSize: 12,
     color: "#64748B",
-    marginBottom: 2,
+    marginBottom: 4,
+    fontWeight: "600",
   },
   price: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: "800",
-    color: "#2563EB",
+    color: "#0F172A", // Dark Navy
   },
   bookButton: {
     flex: 1,
@@ -391,9 +462,14 @@ const styles = StyleSheet.create({
   bookButtonGradient: {
     flexDirection: "row",
     height: 56,
-    borderRadius: 16,
+    borderRadius: 18,
     justifyContent: "center",
     alignItems: "center",
+    shadowColor: "#003580",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 5,
   },
   bookButtonText: {
     color: "#FFF",

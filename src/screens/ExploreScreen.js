@@ -50,14 +50,9 @@ export default function ExploreScreen({ navigation }) {
           });
 
       let imageUri = "https://via.placeholder.com/300";
-      if (item.image) {
-        if (typeof item.image === "string" && item.image.startsWith("http")) {
-          imageUri = item.image;
-        } else if (item.image?.$binary?.base64) {
-          imageUri = `data:image/jpeg;base64,${item.image.$binary.base64}`;
-        } else if (typeof item.image === "string") {
-          imageUri = `data:image/jpeg;base64,${item.image}`;
-        }
+      if (item.image && typeof item.image === "string") {
+        // Images are now Cloudinary URLs from the backend
+        imageUri = item.image;
       }
 
       const price = item.price ? `$${item.price}` : "From $45";
@@ -458,23 +453,23 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 10,
     left: 10,
-    backgroundColor: "rgba(255, 255, 255, 0.95)",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
     flexDirection: "row",
     alignItems: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.15,
     shadowRadius: 4,
     elevation: 3,
   },
   likesText: {
     color: "#0F172A",
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "700",
-    marginLeft: 4,
+    marginLeft: 5,
   },
   cardContent: {
     padding: 12,

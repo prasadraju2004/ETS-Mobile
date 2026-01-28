@@ -171,7 +171,7 @@ export default function AuthScreen() {
                   resizeMode="contain"
                 />
                 <Text style={styles.subTitle}>
-                  {isLogin ? "Welcome Back, Legend." : "Join the Experience."}
+                  {isLogin ? "Welcome Back." : "Join the Experience."}
                 </Text>
               </View>
 
