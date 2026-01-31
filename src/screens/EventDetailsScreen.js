@@ -20,20 +20,56 @@ const { width, height } = Dimensions.get("window");
 const IMG_HEIGHT = height * 0.45;
 
 export default function EventDetailsScreen({ route, navigation }) {
-  // Mock data if route params aren't passed (for testing UI)
+  // Mock data matching backend Event schema structure
+  // In production, this should come from route.params.event (fetched from backend)
   const event = route?.params?.event || {
-    image:
-      "https://images.unsplash.com/photo-1459749411177-2a25413f3120?q=80&w=2070&auto=format&fit=crop",
-    title: "City Marathon 2026",
-    likes: 9813,
-    date: "Jan 12, 11:00 AM",
-    location: "City Roads, Delhi",
+    // Backend schema fields
+    _id: "mock-event-123",
+    name: "Movie Premiere Night",
     description:
-      "Experience an unforgettable event filled with amazing performances, great atmosphere, and a chance to create lasting memories.",
-    type: "Sports",
+      "Experience an unforgettable movie premiere filled with amazing entertainment, great atmosphere, and a chance to create lasting memories with fellow cinema enthusiasts.",
+    image:
+      "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=2070&auto=format&fit=crop",
+
+    // Social metrics
+    likes: 1247,
+    dislikes: 12,
+
+    // Scheduling
+    startDateTime: "2026-02-15T19:00:00.000Z",
+    endDateTime: "2026-02-15T22:00:00.000Z",
+
+    // Venue - REQUIRED for seating!
+    venueId: "mock-venue-456",
+    venue: {
+      _id: "mock-venue-456",
+      name: "Grand Cinema Hall",
+      city: "Mumbai",
+      location: "Lower Parel, Mumbai",
+    },
+
+    // Seating - REQUIRED for seating screen!
+    seatingType: "SEATED", // SEATED | GENERAL_ADMISSION | MIXED
+    zonePricing: {
+      premium: 350,
+      standard: 250,
+      balcony: 150,
+    },
+    currency: "R",
+    seatHoldTimeout: 10,
+
+    // Classification
+    category: "THEATER", // MUSIC | SPORTS | THEATER | COMEDY | OTHER
+
+    // Lifecycle
+    status: "ON_SALE", // DRAFT | PUBLISHED | ON_SALE | SOLD_OUT | CANCELLED | COMPLETED
+
+    // Display fields (for UI compatibility)
+    date: "Feb 15, 7:00 PM",
+    location: "Grand Cinema Hall, Mumbai",
+    type: "Theater",
     tag: "SELLING FAST",
-    price: "From $45",
-    status: "Open",
+    price: "From R150",
     statusColor: "#10B981",
   };
 
@@ -89,7 +125,7 @@ export default function EventDetailsScreen({ route, navigation }) {
 
           {/* Title Section */}
           <View style={styles.titleSection}>
-            <Text style={styles.title}>{event.title}</Text>
+            <Text style={styles.title}>{event.name}</Text>
 
             {/* Likes Count */}
             <View style={styles.likesContainer}>
@@ -189,7 +225,30 @@ export default function EventDetailsScreen({ route, navigation }) {
           <Text style={styles.priceLabel}>Price</Text>
           <Text style={styles.price}>{event.price}</Text>
         </View>
-        <TouchableOpacity style={styles.bookButton}>
+        <TouchableOpacity
+          style={styles.bookButton}
+          onPress={() => {
+            console.log("=== Book Tickets Pressed ===");
+            console.log("Event data:", event);
+            console.log("Event.id:", event?.id);
+            console.log("Event.seatingType:", event?.seatingType);
+            console.log("Event.venue:", event?.venue);
+
+            const isSeatedEvent =
+              event.seatingType === "SEATED" ||
+              event.seatingType === "ALLOCATED";
+
+            console.log("Is seated event:", isSeatedEvent);
+
+            if (isSeatedEvent && event.venue) {
+              console.log("Navigating to Seating screen with event:", event);
+              navigation.navigate("Seating", { event });
+            } else {
+              console.log("Not navigating - showing alert");
+              alert("General admission tickets - Coming soon!");
+            }
+          }}
+        >
           <LinearGradient
             // Thick Blue Gradient
             colors={["#003580", "#0052CC"]}

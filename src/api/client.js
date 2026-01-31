@@ -1,10 +1,12 @@
 import axios from "axios";
 
-// REPLACE WITH YOUR COMPUTER'S LOCAL IP (Run 'ipconfig' or 'ifconfig' to find it)
-// NOTE: 'localhost' will NOT work on Android (it refers to the phone itself).
-// Use your computer's IP address (e.g., 192.168.x.x) or "http://10.0.2.2:5000" for the Android Emulator.
-// Using LAN IP instead of 10.0.2.2 because emulator localhost wasn't reachable
-const API_URL = "http://192.168.0.103:5000";
+// API URL is now configured in .env file
+// Update EXPO_PUBLIC_API_URL in .env when you change networks
+// For Android Emulator: use http://10.0.2.2:5000
+// For Physical Device: use your computer's LAN IP (e.g., http://192.168.x.x:5000)
+const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000";
+
+console.log("API URL:", API_URL); // For debugging
 
 export const client = axios.create({
   baseURL: API_URL,
@@ -17,7 +19,6 @@ export const client = axios.create({
 // Request interceptor for debugging
 client.interceptors.request.use(
   (config) => {
-
     return config;
   },
   (error) => {
@@ -28,15 +29,11 @@ client.interceptors.request.use(
 // Response interceptor for debugging
 client.interceptors.response.use(
   (response) => {
-
     return response;
   },
   (error) => {
-    
     if (error.response) {
-      
     } else if (error.request) {
-
     }
     return Promise.reject(error);
   },

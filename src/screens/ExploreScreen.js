@@ -35,6 +35,14 @@ export default function ExploreScreen({ navigation }) {
   // DATA TRANSFORMATION
   // ---------------------------------------------------------
   const transformEventData = (backendData) => {
+    if (!backendData || !Array.isArray(backendData)) {
+      console.warn(
+        "ExploreScreen: transformEventData received invalid data:",
+        backendData,
+      );
+      return [];
+    }
+
     return backendData.map((item) => {
       const id = item._id?.$oid || item._id || Math.random().toString();
 
@@ -66,12 +74,24 @@ export default function ExploreScreen({ navigation }) {
           : "Unknown Location",
         price: price,
         image: imageUri,
-        tag: item.status === "ACTIVE" ? "SELLING FAST" : "SOLD OUT",
-        status: item.status === "ACTIVE" ? "Available" : "Full",
-        statusColor: item.status === "ACTIVE" ? "#10B981" : "#EF4444",
+        tag:
+          item.status === "ACTIVE" || item.status === "ON_SALE"
+            ? "SELLING FAST"
+            : "SOLD OUT",
+        status:
+          item.status === "ACTIVE" || item.status === "ON_SALE"
+            ? "Available"
+            : "Full",
+        statusColor:
+          item.status === "ACTIVE" || item.status === "ON_SALE"
+            ? "#10B981"
+            : "#EF4444",
         type: item.type || "Other",
         description: item.description,
         likes: item.likes || 0,
+        venue:
+          item.venueId?.$oid || item.venueId || item.venue?.$oid || item.venue, // Venue ID for seating
+        seatingType: item.seatingType || "GENERAL", // SEATED, ALLOCATED or GENERAL
       };
     });
   };

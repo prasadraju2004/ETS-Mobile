@@ -13,6 +13,7 @@ import TicketsScreen from "../screens/TicketsScreen";
 import FavoritesScreen from "../screens/FavoritesScreen";
 import EventDetailsScreen from "../screens/EventDetailsScreen";
 import ProfileScreen from "../screens/ProfileScreen";
+import SeatingScreen from "../screens/SeatingScreen";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -131,6 +132,14 @@ export default function AppNavigator() {
               component={ProfileScreen}
               options={{
                 animation: "slide_from_right",
+                animationDuration: 300,
+              }}
+            />
+            <Stack.Screen
+              name="Seating"
+              component={SeatingScreen}
+              options={{
+                animation: "slide_from_bottom",
                 animationDuration: 300,
               }}
             />

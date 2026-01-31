@@ -38,6 +38,11 @@ export default function HomeScreen({ navigation }) {
   // 1. DATA TRANSFORMATION (Schema -> UI)
   // ---------------------------------------------------------
   const transformEventData = (backendData) => {
+    if (!backendData || !Array.isArray(backendData)) {
+      console.warn("transformEventData received invalid data:", backendData);
+      return [];
+    }
+
     return backendData.map((item) => {
       // 1. Handle ID (MongoDB sometimes returns _id as string or object)
       const id = item._id?.$oid || item._id || Math.random().toString();
@@ -65,7 +70,7 @@ export default function HomeScreen({ navigation }) {
       // 4. Handle Price (Schema doesn't have price, generating mockup or checking field)
       const price = item.price ? `$${item.price}` : "From $45";
 
-      return {
+      const result = {
         id: id,
         title: item.name || "Untitled Event",
         date: formattedDate,
@@ -74,13 +79,27 @@ export default function HomeScreen({ navigation }) {
           : "Unknown Location",
         price: price,
         image: imageUri,
-        tag: item.status === "ACTIVE" ? "SELLING FAST" : "SOLD OUT",
-        status: item.status === "ACTIVE" ? "Available" : "Full",
-        statusColor: item.status === "ACTIVE" ? "#10B981" : "#EF4444",
+        tag:
+          item.status === "ACTIVE" || item.status === "ON_SALE"
+            ? "SELLING FAST"
+            : "SOLD OUT",
+        status:
+          item.status === "ACTIVE" || item.status === "ON_SALE"
+            ? "Available"
+            : "Full",
+        statusColor:
+          item.status === "ACTIVE" || item.status === "ON_SALE"
+            ? "#10B981"
+            : "#EF4444",
         type: item.type || "Other", // For filtering
         description: item.description,
         likes: item.likes || 0,
+        venue:
+          item.venueId?.$oid || item.venueId || item.venue?.$oid || item.venue, // Venue ID for seating
+        seatingType: item.seatingType || "GENERAL", // SEATED, ALLOCATED or GENERAL
       };
+
+      return result;
     });
   };
 
