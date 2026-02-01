@@ -14,6 +14,7 @@ import FavoritesScreen from "../screens/FavoritesScreen";
 import EventDetailsScreen from "../screens/EventDetailsScreen";
 import ProfileScreen from "../screens/ProfileScreen";
 import SeatingScreen from "../screens/SeatingScreen";
+import BookingScreen from "../screens/BookingScreen";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -140,6 +141,14 @@ export default function AppNavigator() {
               component={SeatingScreen}
               options={{
                 animation: "slide_from_bottom",
+                animationDuration: 300,
+              }}
+            />
+            <Stack.Screen
+              name="Booking"
+              component={BookingScreen}
+              options={{
+                animation: "slide_from_right",
                 animationDuration: 300,
               }}
             />

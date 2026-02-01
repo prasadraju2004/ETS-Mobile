@@ -33,11 +33,13 @@ const SEAT_RADIUS = 10;
 const SEAT_SELECTED_RADIUS = 12;
 
 const COLORS = {
-  AVAILABLE: "#171717", // Dark fill for available
-  SOLD: "#334155",
+  AVAILABLE_STROKE: "#22C55E", // Green boundary
+  AVAILABLE_FILL: "transparent",
+  SOLD: "#9CA3AF", // Grey
   LOCKED: "#F59E0B",
   HELD: "#FBBF24",
-  SELECTED: "#6366F1", // Purple
+  SELECTED: "#22C55E", // Green Fill
+  AVAILABLE: "#22C55E", // Legacy/Legend
   ACCESSIBLE: "#22D3EE",
   BG: "#0F172A", // Dark background
   STROKE_DEFAULT: "#64748B", // Visible stroke
@@ -64,6 +66,64 @@ const getPolygonCentroid = (points) => {
   return { x: x / points.length, y: y / points.length };
 };
 
+// Helper: Cross product for convex hull
+function cross(o, a, b) {
+  return (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+}
+
+// Helper: Convex Hull Algorithm (Monotone Chain)
+function convexHull(points) {
+  if (points.length <= 3) return points;
+
+  // Sort by x, then y
+  const pts = [...points].sort((a, b) => (a.x === b.x ? a.y - b.y : a.x - b.x));
+
+  const lower = [];
+  for (const p of pts) {
+    while (
+      lower.length >= 2 &&
+      cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0
+    ) {
+      lower.pop();
+    }
+    lower.push(p);
+  }
+
+  const upper = [];
+  for (let i = pts.length - 1; i >= 0; i--) {
+    const p = pts[i];
+    while (
+      upper.length >= 2 &&
+      cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0
+    ) {
+      upper.pop();
+    }
+    upper.push(p);
+  }
+
+  upper.pop();
+  lower.pop();
+  return lower.concat(upper);
+}
+
+// Helper: Pad polygon points outwards from centroid
+function padConvexPolygon(points, padding) {
+  if (!points || points.length < 3) return points;
+  const centroid = getPolygonCentroid(points);
+  return points.map((p) => {
+    const dx = p.x - centroid.x;
+    const dy = p.y - centroid.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist === 0) return p;
+    // Scale vectors outwards
+    const scale = (dist + padding) / dist;
+    return {
+      x: centroid.x + dx * scale,
+      y: centroid.y + dy * scale,
+    };
+  });
+}
+
 // Helper: robust ID extraction (handles { "$oid": ... } and standard _id)
 const getSafeId = (data) => {
   if (!data) return null;
@@ -78,18 +138,18 @@ const getSafeId = (data) => {
 const SectionComponent = React.memo(({ section }) => (
   <Path
     d={section.d}
-    fill="none"
+    fill={section.fill}
     stroke={section.stroke}
-    strokeWidth={2}
-    strokeOpacity={0.5}
+    strokeWidth={section.strokeWidth || 4}
+    strokeOpacity={0.8}
   />
 ));
 
 const SeatComponent = React.memo(
   ({ item, isSelected, onPress }) => {
-    let fill = COLORS.AVAILABLE;
-    let stroke = COLORS.STROKE_DEFAULT;
-    let strokeWidth = 1;
+    let fill = COLORS.AVAILABLE_FILL;
+    let stroke = COLORS.AVAILABLE_STROKE;
+    let strokeWidth = 1.5;
     let r = SEAT_RADIUS;
     const size = r * 2;
 
@@ -127,7 +187,9 @@ const SeatComponent = React.memo(
           x={item.x}
           y={item.y + 1}
           fill={
-            isSelected || item.status === SeatStatus.SOLD ? "#FFF" : "#94A3B8"
+            isSelected || item.status === SeatStatus.SOLD
+              ? "#FFF"
+              : COLORS.AVAILABLE_STROKE
           }
           fontSize="8"
           fontWeight="bold"
@@ -579,17 +641,38 @@ export default function SeatingScreen({ route, navigation }) {
       const secId = section.id || section.sectionId;
       const sectionColor = section.color || PALETTE[index % PALETTE.length];
 
-      if (section.boundary?.length) {
-        const centroid = getPolygonCentroid(section.boundary);
+      // Collect all seat points for this section
+      const seatPoints = [];
+      if (section.seats) {
+        section.seats.forEach((s) => {
+          if (typeof s.x === "number" && typeof s.y === "number") {
+            seatPoints.push({ x: s.x, y: s.y });
+          }
+        });
+      }
+
+      // Generate Boundary using Convex Hull
+      let hullPoints = [];
+      if (seatPoints.length >= 3) {
+        hullPoints = convexHull(seatPoints);
+        hullPoints = padConvexPolygon(hullPoints, 25);
+      } else if (section.boundary && section.boundary.length > 0) {
+        hullPoints = section.boundary;
+      }
+
+      if (hullPoints.length > 0) {
+        const centroid = getPolygonCentroid(hullPoints);
         const pathData =
-          section.boundary
+          hullPoints
             .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`)
             .join(" ") + " Z";
+
         outputSections.push({
           key: secId,
           d: pathData,
-          fill: sectionColor,
+          fill: "none",
           stroke: sectionColor,
+          strokeWidth: 4,
           label: section.name,
           centroid,
         });
@@ -876,7 +959,14 @@ export default function SeatingScreen({ route, navigation }) {
       <View style={styles.legendContainer}>
         <View style={styles.legendItem}>
           <View
-            style={[styles.legendDot, { backgroundColor: COLORS.AVAILABLE }]}
+            style={[
+              styles.legendDot,
+              {
+                backgroundColor: "transparent",
+                borderColor: COLORS.AVAILABLE_STROKE,
+                borderWidth: 2,
+              },
+            ]}
           />
           <Text style={styles.legendText}>Available</Text>
         </View>
@@ -1002,9 +1092,16 @@ export default function SeatingScreen({ route, navigation }) {
             <TouchableOpacity
               style={[styles.checkoutBtn, isLocking && styles.btnDisabled]}
               disabled={isLocking}
-              onPress={() =>
-                Alert.alert("Payment", "Proceeding to Payment Gateway...")
-              }
+              onPress={() => {
+                const selectedSeatsData = Array.from(selectedSeatIds).map(
+                  (id) => seats.find((s) => getSafeId(s) === id),
+                );
+                navigation.navigate("Booking", {
+                  event: eventDetails,
+                  selectedSeats: selectedSeatsData,
+                  totalPrice,
+                });
+              }}
             >
               {isLocking ? (
                 <ActivityIndicator color="#FFF" size="small" />
